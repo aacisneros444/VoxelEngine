@@ -24,9 +24,6 @@ public class VoxelWorld : MonoBehaviour {
                 }
             }
         }
-        // CreateChunk(new Voxel3(0, 0, 0));
-        // CreateChunk(new Voxel3(1, 0, 0));
-        // CreateChunk(new Voxel3(2, 0, 0));
 
         foreach (KeyValuePair<Voxel3, Chunk> kv in _chunks) {
             kv.Value.Init();
