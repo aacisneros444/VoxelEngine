@@ -21,7 +21,13 @@ public class VoxelWorld : MonoBehaviour {
         _chunks = new Dictionary<Voxel3, Chunk>();
         _chunksToUpdate = new Dictionary<Voxel3, Chunk>();
 
-        CreateChunk(new Voxel3(0, 0, 0));
+        for (int x = -2; x < 2; x++) {
+            for (int y = -2; y < 2; y++) {
+                for (int z = -2; z < 2; z++) {
+                    CreateChunk(new Voxel3(x, y, z));
+                }
+            }
+        }
     }
 
     private void Update() {
@@ -61,7 +67,7 @@ public class VoxelWorld : MonoBehaviour {
         } else {
             newChunk.Init();
         }
-        newChunk.UpdateChunkMesh();
+        _chunksToUpdate.TryAdd(chunkCoordinates, newChunk);
 
         _chunks.Add(chunkCoordinates, newChunk);
 
@@ -124,9 +130,7 @@ public class VoxelWorld : MonoBehaviour {
         CheckToUpdateChunkNeighbors(chunkLocalCoordinates, chunkCoordinates);
 
         // Queue the owning chunk to be updated.
-        if (!_chunksToUpdate.ContainsKey(chunkCoordinates)) {
-            _chunksToUpdate.Add(chunkCoordinates, containingChunk);
-        }
+        _chunksToUpdate.TryAdd(chunkCoordinates, containingChunk);
     }
 
     /// <summary>
