@@ -17,6 +17,10 @@ public class Voxel3 {
         return new Voxel3(c1.X - c2.X, c1.Y - c2.Y, c1.Z - c2.Z);
     }
 
+    public static Voxel3 operator *(Voxel3 c1, int scalar) {
+        return new Voxel3(c1.X * scalar, c1.Y * scalar, c1.Z * scalar);
+    }
+
     // public static int Get1DimensionalIndex(Voxel3 position, int voxelSize) {
     //     return position.X + position.Y * voxelSize + position.Z * voxelSize * voxelSize;
     // }

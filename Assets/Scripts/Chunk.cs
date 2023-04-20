@@ -16,18 +16,48 @@ public class Chunk : MonoBehaviour {
     [HideInInspector]
     public Voxel3 ChunkCoordinates;
 
-    public void Init() {
+    public void Init(Voxel[,,] voxels = null) {
         _meshFilter = GetComponent<MeshFilter>();
         _meshCollider = GetComponent<MeshCollider>();
-        _voxels = new Voxel[VoxelWorld.ChunkVoxelSize, VoxelWorld.ChunkVoxelSize, VoxelWorld.ChunkVoxelSize];
 
-        for (int x = 0; x < VoxelWorld.ChunkVoxelSize; x++) {
-            for (int y = 0; y < VoxelWorld.ChunkVoxelSize; y++) {
-                for (int z = 0; z < VoxelWorld.ChunkVoxelSize; z++) {
-                    _voxels[x, y, z] = new RoomVoxel();
+        if (voxels == null) {
+            _voxels = new Voxel[VoxelWorld.ChunkVoxelSize, VoxelWorld.ChunkVoxelSize, VoxelWorld.ChunkVoxelSize];
+            for (int x = 0; x < VoxelWorld.ChunkVoxelSize; x++) {
+                for (int y = 0; y < VoxelWorld.ChunkVoxelSize; y++) {
+                    for (int z = 0; z < VoxelWorld.ChunkVoxelSize; z++) {
+                        _voxels[x, y, z] = new AirVoxel();
+                    }
                 }
             }
+        } else {
+            _voxels = voxels;
         }
+
+        // _voxels[2, 5, 6] = new RoomVoxel();
+        // _voxels[2, 5, 6] = new RoomVoxel();
+        // _voxels[2, 5, 6] = new RoomVoxel();
+
+        // _voxels[3, 5, 6] = new RoomVoxel();
+        // _voxels[3, 5, 6] = new RoomVoxel();
+        // _voxels[3, 5, 6] = new RoomVoxel();
+
+        // _voxels[4, 5, 6] = new RoomVoxel();
+        // _voxels[4, 5, 6] = new RoomVoxel();
+        // _voxels[4, 5, 6] = new RoomVoxel();
+
+        // _voxels[2, 5, 5] = new RoomVoxel();
+        // _voxels[2, 5, 5] = new RoomVoxel();
+        // _voxels[2, 5, 5] = new RoomVoxel();
+
+        // _voxels[3, 5, 5] = new RoomVoxel();
+        // _voxels[3, 5, 5] = new RoomVoxel();
+        // _voxels[3, 5, 5] = new RoomVoxel();
+
+        // _voxels[4, 5, 5] = new RoomVoxel();
+        // _voxels[4, 5, 5] = new RoomVoxel();
+        // _voxels[4, 5, 5] = new RoomVoxel();
+
+        // _voxels[3, 5, 7] = new RoomVoxel();
     }
 
     /// <summary>
@@ -36,10 +66,11 @@ public class Chunk : MonoBehaviour {
     /// <param name="voxelPosition">The world voxel coordinates.</param>
     /// <returns>Voxel coordinates in the local chunk.</returns>
     public Voxel3 GetLocalVoxelPositionInChunk(Voxel3 voxelPosition) {
-        int voxelLocalX = voxelPosition.X - ChunkCoordinates.X * VoxelWorld.ChunkVoxelSize;
-        int voxelLocaly = voxelPosition.Y - ChunkCoordinates.Y * VoxelWorld.ChunkVoxelSize;
-        int voxelLocalZ = voxelPosition.Z - ChunkCoordinates.Z * VoxelWorld.ChunkVoxelSize;
-        return new Voxel3(voxelLocalX, voxelLocaly, voxelLocalZ);
+        return voxelPosition - (ChunkCoordinates * VoxelWorld.ChunkVoxelSize);
+    }
+
+    private Voxel3 GetWorldVoxelPositionFromLocalCoordinates(Voxel3 chunkLocalCoordinates) {
+        return (ChunkCoordinates * VoxelWorld.ChunkVoxelSize) + chunkLocalCoordinates;
     }
 
     // Get a voxel from the chunk. Expects chunk local coordinates.
@@ -49,9 +80,15 @@ public class Chunk : MonoBehaviour {
         }
         // Did not find requested voxel in chunk. Convert given voxel coordinates to world voxel coordinates
         // and search world.
-        return World.GetVoxel(new Voxel3(ChunkCoordinates.X * VoxelWorld.ChunkVoxelSize + chunkLocalCoordinates.X,
-                                         ChunkCoordinates.Y * VoxelWorld.ChunkVoxelSize + chunkLocalCoordinates.Y,
-                                         ChunkCoordinates.Z * VoxelWorld.ChunkVoxelSize + chunkLocalCoordinates.Z));
+        return World.GetVoxel(GetWorldVoxelPositionFromLocalCoordinates(chunkLocalCoordinates));
+    }
+
+    public void SetVoxel(Voxel3 chunkLocalCoordinates, Voxel voxel) {
+        if (InRange(chunkLocalCoordinates)) {
+            _voxels[chunkLocalCoordinates.X, chunkLocalCoordinates.Y, chunkLocalCoordinates.Z] = voxel;
+        } else {
+            World.SetVoxel(GetWorldVoxelPositionFromLocalCoordinates(chunkLocalCoordinates), voxel);
+        }
     }
 
     /// <summary>

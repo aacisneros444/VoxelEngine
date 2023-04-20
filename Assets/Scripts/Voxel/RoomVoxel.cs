@@ -16,6 +16,6 @@ public class RoomVoxel : Voxel {
     }
 
     public override Vector2 GetTextureTilePosition(Direction direction) {
-        return new Vector2(0, 1);
+        return new Vector2(1, 0);
     }
 }
