@@ -20,10 +20,10 @@ public static class VoxelUtils {
     /// <param name="adjacent">Determines whether to get the voxel coordinates for the position 
     /// along the hit normal, or opposite to it.</param>
     /// <returns>A Voxel3, voxel world coordinates.</returns>
-    public static Voxel3 GetVoxelCoordinates(RaycastHit hit, bool adjacent = false) {
-        Vector3 voxelPosition = new Vector3(MoveWithinVoxel(hit.point.x, hit.normal.x, adjacent),
-                                            MoveWithinVoxel(hit.point.y, hit.normal.y, adjacent),
-                                            MoveWithinVoxel(hit.point.z, hit.normal.z, adjacent));
+    public static Voxel3 GetVoxelCoordinates(RaycastHit hit, bool withNormal = false) {
+        Vector3 voxelPosition = new Vector3(MoveWithinVoxel(hit.point.x, hit.normal.x, withNormal),
+                                            MoveWithinVoxel(hit.point.y, hit.normal.y, withNormal),
+                                            MoveWithinVoxel(hit.point.z, hit.normal.z, withNormal));
         return GetVoxelCoordinates(voxelPosition);
     }
 
@@ -35,8 +35,8 @@ public static class VoxelUtils {
     /// <param name="adjacent">Determines whether or not to move the position component
     /// with or opposite the hit normal.</param>
     /// <returns>The modified component moved along or opposite the hit normal component.</returns>
-    private static float MoveWithinVoxel(float pos, float normal, bool adjacent = false) {
-        if (adjacent) {
+    private static float MoveWithinVoxel(float pos, float normal, bool withNormal = false) {
+        if (withNormal) {
             pos += (normal * 0.5f * VoxelWorld.VoxelSize);
         } else {
             pos -= (normal * 0.5f * VoxelWorld.VoxelSize);

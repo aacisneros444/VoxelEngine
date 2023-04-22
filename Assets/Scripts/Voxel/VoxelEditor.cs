@@ -25,11 +25,11 @@ public class VoxelEditor : MonoBehaviour {
     private List<VoxelSelectionEditData> _currentSelection;
     private Vector3 _dragHitNormal;
 
-    private Bounds _selectionBounds;
+    private Bounds _selectionHighlightBounds;
 
     void Start() {
         _currentSelection = new List<VoxelSelectionEditData>();
-        _selectionBounds = new Bounds();
+        _selectionHighlightBounds = new Bounds();
     }
 
     void Update() {
@@ -43,7 +43,7 @@ public class VoxelEditor : MonoBehaviour {
 
         if (Input.GetMouseButtonDown(1)) {
             _currentSelection.Clear();
-            _selectionBounds = new Bounds(Vector3.zero, Vector3.zero);
+            _selectionHighlightBounds = new Bounds(Vector3.zero, Vector3.zero);
         }
 
         UpdateSelectionHighlight();
@@ -55,28 +55,12 @@ public class VoxelEditor : MonoBehaviour {
         if (Input.GetKeyDown(KeyCode.Equals)) {
             EditSelectedVoxels(KeyCode.Equals);
         }
-
-        // if (Input.GetKeyDown(KeyCode.Equals)) {
-        //     for (int i = 0; i < _currentSelection.Count; i++) {
-        //         Voxel3 coords = _currentSelection[i].Item1;
-        //         if (_currentSelection[i].Item2.GetType() == typeof(AirVoxel)) {
-        //             coords += _dragHitNormal;
-        //         }
-
-        //         _voxelWorld.SetVoxel(coords, new AirVoxel());
-
-        //         Voxel3 newCoords = coords + _dragHitNormal;
-        //         _currentSelection[i] = (newCoords, _voxelWorld.GetVoxel(newCoords));
-
-        //         _selectionBounds.center += new Vector3(_dragHitNormal.X, _dragHitNormal.Y, _dragHitNormal.Z) * VoxelWorld.VoxelSize;
-        //     }
-        // }
     }
 
     private void StartDragSelect() {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit)) {
-            _startDragVoxelCoords = VoxelUtils.GetVoxelCoordinates(hit, false);
+            _startDragVoxelCoords = VoxelUtils.GetVoxelCoordinates(hit, true);
             _dragHitNormal = hit.normal;
         }
     }
@@ -90,7 +74,7 @@ public class VoxelEditor : MonoBehaviour {
 
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit)) {
-            Voxel3 endDragVoxelCoords = VoxelUtils.GetVoxelCoordinates(hit, false);
+            Voxel3 endDragVoxelCoords = VoxelUtils.GetVoxelCoordinates(hit, true);
             Voxel3 dimensions = new Voxel3(Mathf.Abs(_startDragVoxelCoords.X - endDragVoxelCoords.X),
                                            Mathf.Abs(_startDragVoxelCoords.Y - endDragVoxelCoords.Y),
                                            Mathf.Abs(_startDragVoxelCoords.Z - endDragVoxelCoords.Z));
@@ -101,7 +85,7 @@ public class VoxelEditor : MonoBehaviour {
                 for (int y = start.Y; y <= start.Y + dimensions.Y; y++) {
                     for (int z = start.Z; z <= start.Z + dimensions.Z; z++) {
                         Voxel3 voxelCoords = new Voxel3(x, y, z);
-                        Voxel3 surfaceVoxelCoords = voxelCoords + roundedNormal;
+                        Voxel3 surfaceVoxelCoords = voxelCoords - roundedNormal;
                         //_currentSelection.Add((voxelCoords, _voxelWorld.GetVoxel(voxelCoords)));
                         _currentSelection.Add(new VoxelSelectionEditData(voxelCoords,
                                                                          _voxelWorld.GetVoxel(voxelCoords),
@@ -110,45 +94,79 @@ public class VoxelEditor : MonoBehaviour {
                     }
                 }
             }
-            RecalculateBoundsForCurrentSelection(start, dimensions);
+            RecalculateHighlightBoundsForCurrentSelection(start, dimensions);
         }
     }
 
-    private void RecalculateBoundsForCurrentSelection(Voxel3 dragStart, Voxel3 dimensions) {
+    // Vector3 dragAxis = GetDragAxisFromNormal(_dragHitNormal);
+    // Vector3 otherDirection = Vector3.Cross(dragAxis, _dragHitNormal);
+    // Vector3 absNormal = new Vector3(Mathf.Abs(_dragHitNormal.x), Mathf.Abs(_dragHitNormal.y), Mathf.Abs(_dragHitNormal.z));
+    // dragAxis = new Vector3(Mathf.Abs(dragAxis.x), Mathf.Abs(dragAxis.y), Mathf.Abs(dragAxis.z));
+    // otherDirection = new Vector3(Mathf.Abs(otherDirection.x), Mathf.Abs(otherDirection.y), Mathf.Abs(otherDirection.z));
+    // Debug.Log("Dimensions: " + dimensions);
+    // Debug.Log("Drag axis: " + dragAxis);
+    // Debug.Log("Other dir: " + otherDirection);
+    // Debug.Log("Drag hit normal: " + _dragHitNormal);
+    // boundsSize += dragAxis * VoxelWorld.VoxelSize;
+    // boundsSize += otherDirection * VoxelWorld.VoxelSize;
+    // boundsSize += absNormal * VoxelWorld.VoxelSize * 0.02f;
+
+    // Add a whole voxel worth of volume to size, as voxel positions start in the center of the voxel.
+    // Dimensions of (0, 0, 0) indicate a single voxel, must account for this as well.
+    // boundsSize += voxelSize;
+
+    /// <summary>
+    /// Recalcuate the bounds used to highlight the current selection.
+    /// </summary>
+    /// <param name="dragStart">The voxel coordinates for the drag selection start.</param>
+    /// <param name="dimensions">The voxel dimensions for the drag selection.</param>
+    private void RecalculateHighlightBoundsForCurrentSelection(Voxel3 dragStart, Voxel3 dimensions) {
         Vector3 boundsSize = new Vector3(dimensions.X, dimensions.Y, dimensions.Z) * VoxelWorld.VoxelSize;
-
         Vector3 voxelSize = new Vector3(VoxelWorld.VoxelSize, VoxelWorld.VoxelSize, VoxelWorld.VoxelSize);
-        // Add a whole voxel worth of volume to size, as voxel positions start in the center of the voxel.
-        boundsSize += voxelSize;
 
-        // Vector3 dragAxis = GetDragAxisFromNormal(_dragHitNormal);
-        // Vector3 otherDirection = Vector3.Cross(dragAxis, _dragHitNormal);
-        // dragAxis = new Vector3(Mathf.Abs(dragAxis.x), Mathf.Abs(dragAxis.y), Mathf.Abs(dragAxis.z));
-        // otherDirection = new Vector3(Mathf.Abs(otherDirection.x), Mathf.Abs(otherDirection.y), Mathf.Abs(otherDirection.z));
-        // Debug.Log("Drag axis: " + dragAxis);
-        // Debug.Log("Other dir: " + otherDirection);
-        // boundsSize += dragAxis * VoxelWorld.VoxelSize;
-        // boundsSize += otherDirection * VoxelWorld.VoxelSize;
-        // boundsSize += _dragHitNormal * VoxelWorld.VoxelSize * 0.05f;
+        Vector3 dragAxis = GetDragAxisFromNormal(_dragHitNormal);
+        Vector3 otherDirection = Vector3.Cross(dragAxis, _dragHitNormal);
 
-        Vector3 localCenter = boundsSize / 2f;
+        // Absolute normal
+        Vector3 absNormal = new Vector3(Mathf.Abs(_dragHitNormal.x), Mathf.Abs(_dragHitNormal.y), Mathf.Abs(_dragHitNormal.z));
+        // The absolute axis of the drag selection
+        dragAxis = new Vector3(Mathf.Abs(dragAxis.x), Mathf.Abs(dragAxis.y), Mathf.Abs(dragAxis.z));
+        // The absolute axis of the direction perpendicular to the drag axis/ normal
+        // For example, if we are dragging along the x axis, and the normal is along the z axis, this will be y axis (0, 1, 0)
+        otherDirection = new Vector3(Mathf.Abs(otherDirection.x), Mathf.Abs(otherDirection.y), Mathf.Abs(otherDirection.z));
+
+        // Add some size in every direction, as dimensions can be (0, 0, 0), indicative
+        // of a selection of 1 voxel.
+        boundsSize += dragAxis * VoxelWorld.VoxelSize;
+        boundsSize += otherDirection * VoxelWorld.VoxelSize;
+        // This will be the thickness of the bounds in the direction of the normal.
+        const float percentThickness = 0.02f;
+        boundsSize += absNormal * VoxelWorld.VoxelSize * percentThickness;
+
+        Vector3 localCenter = boundsSize * 0.5f;
         // Get the center in world space by adding dragStart * VoxelSize and localCenter.
         Vector3 center = (new Vector3(dragStart.X, dragStart.Y, dragStart.Z) * VoxelWorld.VoxelSize + localCenter);
+
         // Subtract half of voxel size to correctly shift bounds to position.
-        center -= voxelSize * 0.5f;
+        center -= VoxelWorld.VoxelSize * 0.5f * dragAxis;
+        center -= VoxelWorld.VoxelSize * 0.5f * otherDirection;
+        // Subtract half of voxel size * normal to shift bounds to voxel face.
+        const float percentToVoxelFace = 0.95f;
+        center -= VoxelWorld.VoxelSize * 0.5f * _dragHitNormal * percentToVoxelFace;
 
-        // Move the center a bit to overcome clipping with the normal surface.
-        Vector3 overcomeClippingConstant = _dragHitNormal * 0.05f;
-        center += overcomeClippingConstant;
-
-        _selectionBounds.size = boundsSize * 1.025f;
-        _selectionBounds.center = center;
+        _selectionHighlightBounds.size = boundsSize;
+        _selectionHighlightBounds.center = center;
     }
 
+    /// <summary>
+    /// Given a normal, calculate the selection drag axis.
+    /// </summary>
+    /// <param name="normal">The given normal.</param>
+    /// <returns>The axis for the selection drag.</returns>
     private Vector3 GetDragAxisFromNormal(Vector3 normal) {
-        Vector3 referenceVector = Vector3.forward;
-        if (normal == Vector3.forward || normal == -Vector3.forward || normal == Vector3.right || normal == -Vector3.right) {
-            referenceVector = Vector3.up;
+        Vector3 referenceVector = Vector3.up;
+        if (normal == Vector3.up || normal == -Vector3.up) {
+            referenceVector = Vector3.forward;
         }
         return Vector3.Cross(normal, referenceVector).normalized;
     }
@@ -159,20 +177,22 @@ public class VoxelEditor : MonoBehaviour {
                                           Mathf.RoundToInt(_dragHitNormal.y),
                                           Mathf.RoundToInt(_dragHitNormal.z));
 
-        Voxel3 editDirection = keyPressed == KeyCode.Equals ? roundedNormal * -1 : roundedNormal;
+        Voxel3 editDirection = keyPressed == KeyCode.Minus ? roundedNormal * -1 : roundedNormal;
         for (int i = 0; i < _currentSelection.Count; i++) {
+            // The selected voxel.
             Voxel3 selectedCoords = _currentSelection[i].SelectedVoxelCoords;
             Voxel selectedVoxel = _currentSelection[i].SelectedVoxel;
-            Voxel3 surfaceCoords = selectedCoords + roundedNormal;
-            Voxel surfaceVoxel = _voxelWorld.GetVoxel(surfaceCoords);
+            // The voxel adjacent to the selected voxel in the opposite normal direction.
+            Voxel3 adjacentCoords = selectedCoords - roundedNormal;
+            Voxel adjacentVoxel = _voxelWorld.GetVoxel(adjacentCoords);
 
             Voxel3 coordsToSet = null;
             System.Type voxelTypeToSetTo;
             if (keyPressed == KeyCode.Equals) {
                 coordsToSet = selectedCoords;
-                voxelTypeToSetTo = surfaceVoxel.GetType();
+                voxelTypeToSetTo = adjacentVoxel.GetType();
             } else {
-                coordsToSet = surfaceCoords;
+                coordsToSet = adjacentCoords;
                 voxelTypeToSetTo = selectedVoxel.GetType();
             }
 
@@ -180,12 +200,12 @@ public class VoxelEditor : MonoBehaviour {
 
             selectedCoords = selectedCoords + editDirection;
             selectedVoxel = _voxelWorld.GetVoxel(selectedCoords);
-            surfaceCoords = surfaceCoords + editDirection;
-            surfaceVoxel = _voxelWorld.GetVoxel(surfaceCoords);
+            adjacentCoords = adjacentCoords + editDirection;
+            adjacentVoxel = _voxelWorld.GetVoxel(adjacentCoords);
 
-            _currentSelection[i] = new VoxelSelectionEditData(selectedCoords, selectedVoxel, surfaceCoords, surfaceVoxel);
+            _currentSelection[i] = new VoxelSelectionEditData(selectedCoords, selectedVoxel, adjacentCoords, adjacentVoxel);
         }
-        _selectionBounds.center += new Vector3(editDirection.X, editDirection.Y, editDirection.Z) * VoxelWorld.VoxelSize;
+        _selectionHighlightBounds.center += new Vector3(editDirection.X, editDirection.Y, editDirection.Z) * VoxelWorld.VoxelSize;
     }
 
     void OnDrawGizmos() {
@@ -193,7 +213,7 @@ public class VoxelEditor : MonoBehaviour {
             return;
         }
         Gizmos.color = Color.white;
-        Gizmos.DrawCube(_selectionBounds.center, _selectionBounds.size);
+        Gizmos.DrawCube(_selectionHighlightBounds.center, _selectionHighlightBounds.size);
         foreach (VoxelSelectionEditData editData in _currentSelection) {
             Gizmos.color = Color.red;
             Vector3 center = new Vector3(editData.SelectedVoxelCoords.X, editData.SelectedVoxelCoords.Y, editData.SelectedVoxelCoords.Z) * VoxelWorld.VoxelSize;
@@ -209,7 +229,7 @@ public class VoxelEditor : MonoBehaviour {
     }
 
     private void UpdateSelectionHighlight() {
-        _selectionHighlight.transform.position = _selectionBounds.center;
-        _selectionHighlight.transform.localScale = _selectionBounds.size;
+        _selectionHighlight.transform.position = _selectionHighlightBounds.center;
+        _selectionHighlight.transform.localScale = _selectionHighlightBounds.size;
     }
 }
