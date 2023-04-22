@@ -7,15 +7,10 @@ public class MeshData {
     public List<int> Triangles;
     public List<Vector2> UVs;
 
-    public List<Vector3> ColVertices;
-    public List<int> ColTriangles;
-
     public MeshData() {
         Vertices = new List<Vector3>();
         Triangles = new List<int>();
         UVs = new List<Vector2>();
-        ColVertices = new List<Vector3>();
-        ColTriangles = new List<int>();
     }
 
     public void AddQuadWithUVs(Vector3[] quadPoints, Vector2[] uvs, bool reverse) {

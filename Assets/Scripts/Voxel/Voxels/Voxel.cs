@@ -96,10 +96,26 @@ public class Voxel {
         Vector2 tilePos = GetTextureTilePosition(direction);
 
         const float tileSize = 0.25f;
+        // Bottom right
         uvs[0] = new Vector2(tileSize * tilePos.x + tileSize, tileSize * tilePos.y);
+        // Top Right
         uvs[1] = new Vector2(tileSize * tilePos.x + tileSize, tileSize * tilePos.y + tileSize);
+        // Top Left
         uvs[2] = new Vector2(tileSize * tilePos.x, tileSize * tilePos.y + tileSize);
+        // Bottom Left
         uvs[3] = new Vector2(tileSize * tilePos.x, tileSize * tilePos.y);
+
+        const float antiBleedOffset = 0.0025f;
+        Vector2[] antiTextureBleedOffsets = {
+            new Vector2(-antiBleedOffset, antiBleedOffset),
+            new Vector2(-antiBleedOffset, -antiBleedOffset),
+            new Vector2(antiBleedOffset, -antiBleedOffset),
+            new Vector2(antiBleedOffset, antiBleedOffset)
+        };
+
+        for (int i = 0; i < uvs.Length; i++) {
+            uvs[i] += antiTextureBleedOffsets[i];
+        }
 
         return uvs;
     }

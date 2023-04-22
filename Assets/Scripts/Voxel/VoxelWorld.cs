@@ -15,31 +15,25 @@ public class VoxelWorld : MonoBehaviour {
     private Dictionary<Voxel3, Chunk> _chunks;
     private Dictionary<Voxel3, Chunk> _chunksToUpdate;
 
-    public bool print;
-
     private void Start() {
         _chunks = new Dictionary<Voxel3, Chunk>();
         _chunksToUpdate = new Dictionary<Voxel3, Chunk>();
 
-        for (int x = -2; x < 2; x++) {
-            for (int y = -2; y < 2; y++) {
-                for (int z = -2; z < 2; z++) {
-                    CreateChunk(new Voxel3(x, y, z));
-                }
-            }
-        }
+        // for (int x = -2; x < 2; x++) {
+        //     for (int y = -2; y < 2; y++) {
+        //         for (int z = -2; z < 2; z++) {
+        //             CreateChunk(new Voxel3(x, y, z));
+        //         }
+        //     }
+        // }
+
+        CreateChunk(new Voxel3(0, 0, 0));
     }
 
     private void Update() {
         foreach (Chunk chunk in _chunksToUpdate.Values) {
             chunk.UpdateChunkMesh();
-            Debug.Log("Updating " + chunk.ChunkCoordinates);
-        }
-        if (print) {
-            foreach (KeyValuePair<Voxel3, Chunk> kv in _chunks) {
-                Debug.Log("Chunk key: " + kv.Key + " and value: " + kv.Value.ChunkCoordinates);
-            }
-            print = false;
+            // Debug.Log("Updating " + chunk.ChunkCoordinates);
         }
         _chunksToUpdate.Clear();
     }
