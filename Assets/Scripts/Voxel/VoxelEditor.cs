@@ -1,18 +1,18 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public struct VoxelSelectionEditData {
     public Voxel3 SelectedVoxelCoords;
     public Voxel SelectedVoxel;
-    public Voxel3 SurfaceVoxelCoords;
-    public Voxel SurfaceVoxel;
+    public Voxel3 AdjacentVoxelCoords;
+    public Voxel AdjacentVoxel;
 
-    public VoxelSelectionEditData(Voxel3 selectedVoxelCoords, Voxel selectedVoxel, Voxel3 surfaceVoxelCoords, Voxel surfaceVoxel) {
+    public VoxelSelectionEditData(Voxel3 selectedVoxelCoords, Voxel selectedVoxel, Voxel3 adjacentVoxelCoords, Voxel adjacentVoxel) {
         this.SelectedVoxelCoords = selectedVoxelCoords;
         this.SelectedVoxel = selectedVoxel;
-        this.SurfaceVoxelCoords = surfaceVoxelCoords;
-        this.SurfaceVoxel = surfaceVoxel;
+        this.AdjacentVoxelCoords = adjacentVoxelCoords;
+        this.AdjacentVoxel = adjacentVoxel;
     }
 }
 
@@ -20,12 +20,17 @@ public class VoxelEditor : MonoBehaviour {
     [SerializeField] private VoxelWorld _voxelWorld;
     [SerializeField] private GameObject _hitMarker;
     [SerializeField] private GameObject _selectionHighlight;
+    [SerializeField] private bool _instant;
+    [SerializeField] private VoxelEditAnimationManager _voxelEditAnimationManager;
 
     private Voxel3 _startDragVoxelCoords;
     private List<VoxelSelectionEditData> _currentSelection;
     private Vector3 _dragHitNormal;
 
     private Bounds _selectionHighlightBounds;
+
+    public event Action MadeNewSelection;
+    public event Action<List<VoxelSelectionEditData>, Vector3, bool> EditedSelection;
 
     void Start() {
         _currentSelection = new List<VoxelSelectionEditData>();
@@ -41,6 +46,10 @@ public class VoxelEditor : MonoBehaviour {
             DragSelect();
         }
 
+        if (Input.GetMouseButtonUp(0)) {
+            MadeNewSelection?.Invoke();
+        }
+
         if (Input.GetMouseButtonDown(1)) {
             _currentSelection.Clear();
             _selectionHighlightBounds = new Bounds(Vector3.zero, Vector3.zero);
@@ -48,12 +57,13 @@ public class VoxelEditor : MonoBehaviour {
 
         UpdateSelectionHighlight();
 
-        if (Input.GetKeyDown(KeyCode.Minus)) {
-            EditSelectedVoxels(KeyCode.Minus);
-        }
-
-        if (Input.GetKeyDown(KeyCode.Equals)) {
-            EditSelectedVoxels(KeyCode.Equals);
+        if (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.Equals)) {
+            bool extrusion = Input.GetKeyDown(KeyCode.Equals);
+            if (_instant) {
+                EditSelectedVoxels(_currentSelection, _dragHitNormal, extrusion);
+            } else {
+                EditedSelection?.Invoke(new List<VoxelSelectionEditData>(_currentSelection), _dragHitNormal, extrusion);
+            }
         }
     }
 
@@ -85,12 +95,12 @@ public class VoxelEditor : MonoBehaviour {
                 for (int y = start.Y; y <= start.Y + dimensions.Y; y++) {
                     for (int z = start.Z; z <= start.Z + dimensions.Z; z++) {
                         Voxel3 voxelCoords = new Voxel3(x, y, z);
-                        Voxel3 surfaceVoxelCoords = voxelCoords - roundedNormal;
+                        Voxel3 adjacentVoxelCoords = voxelCoords - roundedNormal;
                         //_currentSelection.Add((voxelCoords, _voxelWorld.GetVoxel(voxelCoords)));
                         _currentSelection.Add(new VoxelSelectionEditData(voxelCoords,
                                                                          _voxelWorld.GetVoxel(voxelCoords),
-                                                                         surfaceVoxelCoords,
-                                                                         _voxelWorld.GetVoxel(surfaceVoxelCoords)));
+                                                                         adjacentVoxelCoords,
+                                                                         _voxelWorld.GetVoxel(adjacentVoxelCoords)));
                     }
                 }
             }
@@ -172,23 +182,25 @@ public class VoxelEditor : MonoBehaviour {
     }
 
 
-    private void EditSelectedVoxels(KeyCode keyPressed) {
-        Voxel3 roundedNormal = new Voxel3(Mathf.RoundToInt(_dragHitNormal.x),
-                                          Mathf.RoundToInt(_dragHitNormal.y),
-                                          Mathf.RoundToInt(_dragHitNormal.z));
+    public void EditSelectedVoxels(List<VoxelSelectionEditData> selectionEditData,
+                                   Vector3 editNormal,
+                                   bool extrusion) {
+        Voxel3 roundedNormal = new Voxel3(Mathf.RoundToInt(editNormal.x),
+                                          Mathf.RoundToInt(editNormal.y),
+                                          Mathf.RoundToInt(editNormal.z));
 
-        Voxel3 editDirection = keyPressed == KeyCode.Minus ? roundedNormal * -1 : roundedNormal;
-        for (int i = 0; i < _currentSelection.Count; i++) {
+        Voxel3 editDirection = !extrusion ? roundedNormal * -1 : roundedNormal;
+        for (int i = 0; i < selectionEditData.Count; i++) {
             // The selected voxel.
-            Voxel3 selectedCoords = _currentSelection[i].SelectedVoxelCoords;
-            Voxel selectedVoxel = _currentSelection[i].SelectedVoxel;
+            Voxel3 selectedCoords = selectionEditData[i].SelectedVoxelCoords;
+            Voxel selectedVoxel = selectionEditData[i].SelectedVoxel;
             // The voxel adjacent to the selected voxel in the opposite normal direction.
             Voxel3 adjacentCoords = selectedCoords - roundedNormal;
             Voxel adjacentVoxel = _voxelWorld.GetVoxel(adjacentCoords);
 
             Voxel3 coordsToSet = null;
             System.Type voxelTypeToSetTo;
-            if (keyPressed == KeyCode.Equals) {
+            if (extrusion) {
                 coordsToSet = selectedCoords;
                 voxelTypeToSetTo = adjacentVoxel.GetType();
             } else {
@@ -203,7 +215,7 @@ public class VoxelEditor : MonoBehaviour {
             adjacentCoords = adjacentCoords + editDirection;
             adjacentVoxel = _voxelWorld.GetVoxel(adjacentCoords);
 
-            _currentSelection[i] = new VoxelSelectionEditData(selectedCoords, selectedVoxel, adjacentCoords, adjacentVoxel);
+            selectionEditData[i] = new VoxelSelectionEditData(selectedCoords, selectedVoxel, adjacentCoords, adjacentVoxel);
         }
         _selectionHighlightBounds.center += new Vector3(editDirection.X, editDirection.Y, editDirection.Z) * VoxelWorld.VoxelSize;
     }
@@ -222,7 +234,7 @@ public class VoxelEditor : MonoBehaviour {
 
 
             Gizmos.color = Color.white;
-            center = new Vector3(editData.SurfaceVoxelCoords.X, editData.SurfaceVoxelCoords.Y, editData.SurfaceVoxelCoords.Z) * VoxelWorld.VoxelSize;
+            center = new Vector3(editData.AdjacentVoxelCoords.X, editData.AdjacentVoxelCoords.Y, editData.AdjacentVoxelCoords.Z) * VoxelWorld.VoxelSize;
             size = new Vector3(VoxelWorld.VoxelSize, VoxelWorld.VoxelSize, VoxelWorld.VoxelSize);
             Gizmos.DrawWireCube(center, size);
         }

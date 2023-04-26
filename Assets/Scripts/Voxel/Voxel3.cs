@@ -1,3 +1,5 @@
+using UnityEngine;
+
 public class Voxel3 {
     public int X;
     public int Y;
@@ -19,6 +21,10 @@ public class Voxel3 {
 
     public static Voxel3 operator *(Voxel3 c1, int scalar) {
         return new Voxel3(c1.X * scalar, c1.Y * scalar, c1.Z * scalar);
+    }
+
+    public Vector3 ToVector3() {
+        return new Vector3(X, Y, Z);
     }
 
     // public static int Get1DimensionalIndex(Voxel3 position, int voxelSize) {

@@ -18,7 +18,13 @@ public class MeshData {
             Debug.LogError("Incorrect number of uvs for quad. Received: " + uvs + "uvs");
         }
         AddQuad(quadPoints, reverse);
-        UVs.AddRange(uvs);
+        if (reverse) {
+            UVs.AddRange(uvs);
+        } else {
+            for (int i = uvs.Length - 1; i >= 0; i--) {
+                UVs.Add(uvs[i]);
+            }
+        }
     }
 
     public void AddQuad(Vector3[] quadPoints, bool revese) {
